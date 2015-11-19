@@ -1,3 +1,5 @@
+#Created at AMIA Hackday2015 by Dianne Dietrich, Morgan Morel, Brendan Coates, Tre Berney, and Sadie Roosa
+
 #!/usr/bin/python
 
 # import modules used here -- sys is a very standard one
