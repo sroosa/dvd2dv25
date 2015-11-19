@@ -1,22 +1,49 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 
+# import modules used here -- sys is a very standard one
 import sys
-import subprocess
 import glob
 import os
 import re
 from collections import defaultdict
+import subprocess
+from shutil import rmtree
+import time
 
+TIMEDATE = time.strftime("%Y%m%d%H%M%S")
+
+# Gather our code in a main() function
+def main():
+
+    # Stuff # vars get called PathTo here
+    PathToOutput = SetupOutput(sys.argv[2])
+    PathToVTS = TestISO(sys.argv[1])
+    DictOfVTS = VOBDict(PathToVTS)
+    ThisVOBLists = CreateVOBLists(DictOfVTS, PathToOutput)
+    ffmpegConcat(ThisVOBLists, PathToOutput)
+    AllConcats = glob.glob('{0}/concats/*.VOB'.format(PathToOutput))
+    for ac in AllConcats:
+        thisHeight, thisDAR = ffprobe(ac)
+        createFinal(PathToOutput, ac, thisHeight, thisDAR)
+    deleteWorkFiles(PathToOutput)
+    print 'DONE!'
+    
+def deleteWorkFiles(OutputPath):
+    #Deletes /voblist and /concats in the output folder
+    rmtree('{0}/voblists'.format(OutputPath,))
+    rmtree('{0}/concats'.format(OutputPath,))
 
 def SetupOutput(OutputPath):
     OutputPath = os.path.expanduser(OutputPath)
-    if os.path.exists(OutputPath):
-        sys.exit('Output folder already exists.')
+    if not os.path.exists(OutputPath):
+        sys.exit('Output directory does not exist.')
     else:
-        os.makedirs(OutputPath)
-        os.makedirs('{0}/voblists'.format(OutputPath,))
-        os.makedirs('{0}/concats'.format(OutputPath,))
-        os.makedirs('{0}/final'.format(OutputPath,))
+        try:
+            os.makedirs('{0}/voblists'.format(OutputPath,))
+            os.makedirs('{0}/concats'.format(OutputPath,))
+            os.makedirs('{0}/final_{1}'.format(OutputPath,TIMEDATE,))
+        except:
+            sys.exit('Please make sure the output directory does not contain /voblist or /concats !!')
     return OutputPath # Returns validated output path
 
 
@@ -68,7 +95,7 @@ def ffprobe(InputVOB):
 
 def createFinal(OutputPath, InputFile, InputHeight, InputDAR):
     FinalVOB = os.path.basename(InputFile).split('_all.VOB')[0]
-    FinalVOB = '{0}/final/{1}_final.dv'.format(OutputPath, FinalVOB)
+    FinalVOB = '{0}/final_{1}/{2}_final.dv'.format(OutputPath, TIMEDATE, FinalVOB,)
     if InputHeight == '480':
         FinalFormat = 'ntsc-dv'
     elif InputHeight == '576':
@@ -77,14 +104,7 @@ def createFinal(OutputPath, InputFile, InputHeight, InputDAR):
         FinalFormat = 'ntsc-dv'
     subprocess.check_output(['ffmpeg', '-i', InputFile, '-target', FinalFormat, '-aspect', InputDAR, FinalVOB])
 
-
-# Stuff # vars get called PathTo here
-PathToOutput = SetupOutput('~/Desktop/amia_output')
-PathToVTS = TestISO('~/Desktop/ISO_Source/VIDEO_TS')
-DictOfVTS = VOBDict(PathToVTS)
-ThisVOBLists = CreateVOBLists(DictOfVTS, PathToOutput)
-ffmpegConcat(ThisVOBLists, PathToOutput)
-AllConcats = glob.glob('{0}/concats/*.VOB'.format(PathToOutput))
-for ac in AllConcats:
-    thisHeight, thisDAR = ffprobe(ac)
-    createFinal(PathToOutput, ac, thisHeight, thisDAR)
+# Standard boilerplate to call the main() function to begin
+# the program.
+if __name__ == '__main__':
+  main()
